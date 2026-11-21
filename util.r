@@ -11,11 +11,36 @@ get_circular_index = function(pos, step, size){
   return(new)
 }
 
+# Get slopes for unit i at all times
+get_B_i = function(B, i, T_, p){
+  index_start = (i-1) * T_ + 1
+  index_end = i * T_
+  B_i = B[,index_start:index_end]
+  
+  assert_dimensions(B_i, dim_=c(p, T_))
+  return(B_i)
+}
+
+# Get slopes for all units at time t
+get_B_t = function(B, t, T_, N, p){
+  cols = seq(from=t, to=t+(N-1)*T_, by=T_)
+  B_t = B[,cols]
+  
+  assert_dimensions(B_t, dim_=c(p, N))
+  return(B_t)
+}
+
+clog = function(msg, file=LOG_FILE){
+  logline = paste0(format(Sys.time(), "%Y-%m-%d %H:%M:%OS6 "), msg, "\n")
+  cat(logline)   # print to console
+  cat(logline, file=file, append=TRUE)    # print to log
+}
+
 assert_dimensions = function(A, B=NULL, dim_=NULL){
   dim_A = if (is.array(A) || inherits(A, "CVXR::Expression")) dim(A) else length(A)
   
   if (!is.null(B) && is.null(dim_)){
-    dim_B = if (is.array(B)) dim(B) else length(B)
+    dim_B = if (is.array(B) || inherits(B, "CVXR::Expression")) dim(B) else length(B)
     stopifnot(identical(dim_A, dim_B))
     
   } else if (is.null(B) && (!is.null(dim_))){
@@ -45,3 +70,5 @@ assert_dimensions = function(A, B=NULL, dim_=NULL){
 # assert_dimensions(array(NA, c(1,2,3)), dim_=c(1,2,4))
 # assert_dimensions(c(1,2), c(3,4,5))
 # assert_dimensions(c(NA,NA), dim_=3)
+
+
