@@ -289,4 +289,49 @@ identify_blocks = function(N, T_, p, B, tol=1e-8){
   return(list(group=group, regime=regime, block=block))
 }
 
+estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat){
+  A_hat = array(NA, dim=c(K_hat, m_hat+1, p))
+  
+  for (l in 1:K_hat){
+    for (u in 1:(m_hat+1)){
+      clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
+      periods = which(regime_hat==u)
+      num_periods = length(periods)
+      
+      sum_XMX = 0
+      sum_XMy = 0
+      for (i in 1:N){
+        if (group_hat[i] == l){
+          X_iu = X[i,periods,]
+          y_iu = y[i,periods]
+          M_F_hat_iu = M_F_hat[periods,periods]
+          assert_dimensions(X_iu, dim_=c(num_periods, p))
+          assert_dimensions(y_iu, dim_=num_periods)
+          assert_dimensions(M_F_hat_iu, dim_=c(num_periods, num_periods))
+          
+          sum_XMX_i = t(X_iu) %*% M_F_hat_iu %*% X_iu
+          assert_dimensions(sum_XMX_i, dim_=c(p, p))
+          sum_XMX = sum_XMX + sum_XMX_i
+          
+          sum_XMy_i = t(X_iu) %*% M_F_hat_iu %*% y_iu
+          assert_dimensions(sum_XMy_i, dim_=c(p, 1))
+          sum_XMy = sum_XMy + sum_XMy_i
+        }
+      }
+      
+      A_hat_lu = solve(sum_XMX) %*% sum_XMy
+      assert_dimensions(A_hat_lu, dim_=c(p, 1))
+      A_hat_lu = A_hat_lu[,1]
+      
+      assert_dimensions(A_hat[l,u,], A_hat_lu)
+      A_hat[l,u,] = A_hat_lu
+    }
+  }
+  
+  return(A_hat)
+}
+
+
+
+
 

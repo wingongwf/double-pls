@@ -63,10 +63,18 @@ clog(paste0("solve_time=", round(solve_time,2), ", ", "num_iters=", num_iters))
 B_hat = CVXR::value(B)
 assert_dimensions(B_hat, dim_=c(p, N*T_))
 
-# Identify the structure of slopes
-B_hat_struct = identify_blocks(N=N, T_=T_, p=p, B=B_hat)
-block_hat = B_hat_struct$block
-b0_hat = max(block_hat)
-clog(paste0("group=", vec2str(B_hat_struct$group), ", regime=", vec2str(B_hat_struct$regime), ", b0_hat=", b0_hat))
+# Identify the structure of slopes: groups and regimes
+group_hat = identify_groups(N=N, T_=T_, p=p, B=B_hat)
+regime_hat = identify_regimes(N=N, T_=T_, p=p, B=B_hat)
+K_hat = max(group_hat)
+m_hat = max(regime_hat) - 1
+clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
+
+# Perform post-selection estimation of slopes
+# A_hat: K_hat x (m_hat+1) x p
+A_hat = estimate_slopes_post_selection(
+  p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
+assert_dimensions(A_hat, dim_=c(K_hat, m_hat+1, p))
+
 
 
