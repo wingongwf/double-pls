@@ -30,6 +30,11 @@ get_B_t = function(B, t, T_, N, p){
   return(B_t)
 }
 
+vec2str = function(vec){
+  string = paste(vec, collapse = " ")
+  return(string)
+}
+
 clog = function(msg, file=LOG_FILE){
   logline = paste0(format(Sys.time(), "%Y-%m-%d %H:%M:%OS6 "), msg, "\n")
   cat(logline)   # print to console

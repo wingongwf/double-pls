@@ -173,4 +173,120 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
   return(penalty_time_dimension)
 }
 
+identify_groups = function(N, T_, p, B, tol=1e-8){
+  # Put cross-sectional units into groups
+  group = rep(NA, N)
+  group[1] = 1   # put i=1 into first group
+  
+  for (i in 2:N){
+    B_hat_i = get_B_i(B=B, i=i, T_=T_, p=p)
+    is_assigned = FALSE
+    collected_groups = unique(group)
+    collected_groups = collected_groups[!is.na(collected_groups)]   # remove NA
+    
+    for (l in collected_groups){
+      is_group_l = TRUE
+      members = which(group==l)  # all members of group l
+      
+      # if B_i is not equal to ANY member, then not group l
+      for (mem in members){
+        B_hat_mem = get_B_i(B=B, i=mem, T_=T_, p=p)
+        if (max(abs(as.vector(B_hat_i - B_hat_mem))) > tol){
+          clog(paste0("i=", i, " different than i=", mem, " in group=", l))
+          is_group_l = FALSE
+          break
+        } else{
+          clog(paste0("i=", i, " same as i=", mem, " in group=", l))
+        }
+      }
+      
+      # if B_i is equal to ALL members, then assign to group l
+      if (is_group_l){
+        clog(paste0("i=", i, " same as i=", vec2str(members), ", assign to group=", l))
+        group[i] = l
+        is_assigned = TRUE
+        break
+      }
+    }
+    
+    # if B_i does not belong to any collected groups, then assign to a new group
+    if(!is_assigned){
+      new_group = max(collected_groups) + 1
+      clog(paste0("i=", i, " assign to new group=", new_group))
+      group[i] = new_group
+    }
+  }
+  
+  return(group)
+}
+
+identify_regimes = function(N, T_, p, B, tol=1e-8){
+  # Put periods into regimes
+  regime = rep(NA, T_)
+  regime[1] = 1   # put t=1 into first regime
+  
+  for (t in 2:T_){
+    B_t = get_B_t(B=B, t=t, T_=T_, N=N, p=p)
+    B_tminus1 = get_B_t(B=B, t=t-1, T_=T_, N=N, p=p)
+    
+    if (max(abs(as.vector(B_t - B_tminus1))) > tol){
+      clog(paste0("t=", t, " different regime than t=", t-1, ", assign to regime=", regime[t-1] + 1))
+      regime[t] = regime[t-1] + 1 
+    } else{
+      clog(paste0("t=", t, " same regime as t=", t-1, ", assign to regime=", regime[t-1]))
+      regime[t] = regime[t-1]
+    }
+  }
+  
+  return(regime)
+}
+
+identify_blocks = function(N, T_, p, B, tol=1e-8){
+  # Put cross-sectional units and periods into blocks
+  group = identify_groups(N=N, T_=T_, p=p, B=B, tol=tol)
+  regime = identify_regimes(N=N, T_=T_, p=p, B=B, tol=tol)
+  
+  block = matrix(NA, N, T_)
+  block[1,1] = 1   # put i=1,t=1 into first block
+  
+  for (i in 1:N){
+    is_new_block = TRUE
+
+    # Case: t=1
+    if (i == 1){
+      is_new_block = FALSE  # already initialized
+    } else{
+      # check against all previous units to find same group
+      for (j in 1:(i-1)){
+        if (group[i] == group[j]){   # same group
+          clog(paste0("i=", i, " same group as i=", j))
+          block[i,1] = block[j, 1]
+          is_new_block = FALSE
+          break
+        }
+      }
+    }
+    
+    # if first unit in group, then assign a new block
+    if (is_new_block){
+      clog(paste0("i=", i, " assign to a new block=", max(block, na.rm=TRUE)+1))
+      block[i,1] = max(block, na.rm=TRUE) + 1
+    }
+    
+    for (t in 2:T_){
+      if (regime[t] == regime[t-1]){
+        clog(paste0("i=", i, ": t=", t, " in same regime as t=", t-1, ", assign to block=", block[i, t-1]))
+        block[i,t] = block[i, t-1]    # same regime
+      } else{
+        clog(paste0("i=", i, ": t=", t, " in different regime than t=", t-1, ", assign to block=", block[i, t-1]+1))
+        block[i,t] = block[i, t-1] + 1   # different regime
+      }
+    }
+  }
+  
+  stopifnot(sum(is.na(block)) == 0)
+  stopifnot(max(block) == max(group)*max(regime))  # assert no. of blocks is as expected
+  return(list(group=group, regime=regime, block=block))
+}
+
 
