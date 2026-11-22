@@ -38,39 +38,17 @@ gamma_1 = NULL
 gamma_2 = NULL
 
 # Step 3: estimate the slopes B with given gamma_1 and gamma_2
-# Decision variables
-# B: p x N*T_
-B = CVXR::Variable(c(p, N*T_))
-
-# Set up the objective function
 M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
-residual_sum_squares = compute_residual_sum_squares(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat)
-penalty_cross_section = compute_penalty_cross_section(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat, kappa=kappa)
-penalty_time_dimension = compute_penalty_time_dimension(N=N, T_=T_, p=p, X=X, y=y, B=B, kappa=kappa)
+B_hat = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
 
-objective = CVXR::Minimize(1/(N*T_) * residual_sum_squares +
-                             gamma_1/(N^2) * penalty_cross_section +
-                             gamma_2/T_ * penalty_time_dimension)
-
-# Run optimization to estimate B: B_hat
-prob = CVXR::Problem(objective)
-solution = CVXR::psolve(prob)
-stopifnot(CVXR::status(prob) == "optimal")  # assert convergence
-num_iters = CVXR::solver_stats(prob)@num_iters
-solve_time = CVXR::solver_stats(prob)@solve_time
-clog(paste0("solve_time=", round(solve_time,2), ", ", "num_iters=", num_iters))
-
-B_hat = CVXR::value(B)
-assert_dimensions(B_hat, dim_=c(p, N*T_))
-
-# Identify the structure of slopes: groups and regimes
+# Step 4: identify the structure of slopes: groups and regimes
 group_hat = identify_groups(N=N, T_=T_, p=p, B=B_hat)
 regime_hat = identify_regimes(N=N, T_=T_, p=p, B=B_hat)
 K_hat = max(group_hat)
 m_hat = max(regime_hat) - 1
 clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
 
-# Perform post-selection estimation of slopes
+# Step5: post-selection estimation of slopes
 # A_hat: K_hat x (m_hat+1) x p
 A_hat = estimate_slopes_post_selection(
   p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)

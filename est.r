@@ -40,19 +40,6 @@ compute_residual_sum_squares = function(N, T_, p, X, y, B, M_F_hat){
   return(residual_sum_squares)
 }
 
-estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
-  B_cs = matrix(NA, p, N)
-  for (i in 1:N){
-    B_cs_i = solve(t(X[i,,]) %*% M_F_hat %*% X[i,,]) %*% t(X[i,,]) %*% M_F_hat %*% y[i,]
-    assert_dimensions(B_cs_i, dim_=c(p, 1))
-    B_cs_i = B_cs_i[,1]
-    assert_dimensions(B_cs[,i], B_cs_i)
-    B_cs[,i] = B_cs_i
-  }
-  
-  return(B_cs)
-}
-
 compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
   B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat)
   assert_dimensions(B_cs, dim_=c(p, N))
@@ -96,44 +83,6 @@ compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
   
   assert_dimensions(penalty_cross_section, dim_=c(1, 1))
   return(penalty_cross_section)
-}
-
-estimate_slopes_by_period = function(N, T_, p, X, y){
-  B_period = matrix(NA, p, T_)
-  X_cross_section_mean = apply(X, c(2,3), mean)
-  y_cross_section_mean = apply(y, 2, mean)
-  assert_dimensions(X_cross_section_mean, dim_=c(T_, p))
-  assert_dimensions(y_cross_section_mean, dim_=T_)
-  
-  for (t in 1:T_){
-    sum_1 = 0
-    sum_2 = 0
-    
-    for (i in 1:N){
-      assert_dimensions(X[i,t,], dim_=p)
-      X_tilde_it = X[i,t,] - X_cross_section_mean[t,]
-      
-      assert_dimensions(y[i,t], dim_=1)
-      y_tilde_it = y[i,t] - y_cross_section_mean[t]
-      
-      XX = X_tilde_it %*% t(X_tilde_it)
-      assert_dimensions(XX, dim_=c(p, p))
-      sum_1 = sum_1 + XX
-      
-      Xy = X_tilde_it * y_tilde_it
-      assert_dimensions(Xy, dim_=p)
-      sum_2 = sum_2 + Xy
-    }
-    
-    B_period_t = solve(sum_1) %*% sum_2
-    assert_dimensions(B_period_t, dim_=c(p, 1))
-    B_period_t = B_period_t[,1]
-    
-    assert_dimensions(B_period[,t], B_period_t)
-    B_period[,t] = B_period_t
-  }
-  
-  return(B_period)
 }
 
 compute_omega_period = function(N, T_, p, X, y, kappa){
@@ -287,6 +236,85 @@ identify_blocks = function(N, T_, p, B, tol=1e-8){
   stopifnot(sum(is.na(block)) == 0)
   stopifnot(max(block) == max(group)*max(regime))  # assert no. of blocks is as expected
   return(list(group=group, regime=regime, block=block))
+}
+
+estimate_slopes = function(N, T_, p, X, y, M_F_hat, kappa){
+  # Decision variables
+  # B: p x N*T_
+  B = CVXR::Variable(c(p, N*T_))
+  
+  # Set up the objective function
+  residual_sum_squares = compute_residual_sum_squares(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat)
+  penalty_cross_section = compute_penalty_cross_section(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat, kappa=kappa)
+  penalty_time_dimension = compute_penalty_time_dimension(N=N, T_=T_, p=p, X=X, y=y, B=B, kappa=kappa)
+  
+  objective = CVXR::Minimize(1/(N*T_) * residual_sum_squares +
+                               gamma_1/(N^2) * penalty_cross_section +
+                               gamma_2/T_ * penalty_time_dimension)
+  
+  # Run optimization to estimate B: B_hat
+  prob = CVXR::Problem(objective)
+  solution = CVXR::psolve(prob)
+  stopifnot(CVXR::status(prob) == "optimal")  # assert convergence
+  num_iters = CVXR::solver_stats(prob)@num_iters
+  solve_time = CVXR::solver_stats(prob)@solve_time
+  clog(paste0("solve_time=", round(solve_time,2), ", ", "num_iters=", num_iters))
+  
+  B_hat = CVXR::value(B)
+  assert_dimensions(B_hat, dim_=c(p, N*T_))
+  
+  return(B_hat)
+}
+
+estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
+  B_cs = matrix(NA, p, N)
+  for (i in 1:N){
+    B_cs_i = solve(t(X[i,,]) %*% M_F_hat %*% X[i,,]) %*% t(X[i,,]) %*% M_F_hat %*% y[i,]
+    assert_dimensions(B_cs_i, dim_=c(p, 1))
+    B_cs_i = B_cs_i[,1]
+    assert_dimensions(B_cs[,i], B_cs_i)
+    B_cs[,i] = B_cs_i
+  }
+  
+  return(B_cs)
+}
+
+estimate_slopes_by_period = function(N, T_, p, X, y){
+  B_period = matrix(NA, p, T_)
+  X_cross_section_mean = apply(X, c(2,3), mean)
+  y_cross_section_mean = apply(y, 2, mean)
+  assert_dimensions(X_cross_section_mean, dim_=c(T_, p))
+  assert_dimensions(y_cross_section_mean, dim_=T_)
+  
+  for (t in 1:T_){
+    sum_1 = 0
+    sum_2 = 0
+    
+    for (i in 1:N){
+      assert_dimensions(X[i,t,], dim_=p)
+      X_tilde_it = X[i,t,] - X_cross_section_mean[t,]
+      
+      assert_dimensions(y[i,t], dim_=1)
+      y_tilde_it = y[i,t] - y_cross_section_mean[t]
+      
+      XX = X_tilde_it %*% t(X_tilde_it)
+      assert_dimensions(XX, dim_=c(p, p))
+      sum_1 = sum_1 + XX
+      
+      Xy = X_tilde_it * y_tilde_it
+      assert_dimensions(Xy, dim_=p)
+      sum_2 = sum_2 + Xy
+    }
+    
+    B_period_t = solve(sum_1) %*% sum_2
+    assert_dimensions(B_period_t, dim_=c(p, 1))
+    B_period_t = B_period_t[,1]
+    
+    assert_dimensions(B_period[,t], B_period_t)
+    B_period[,t] = B_period_t
+  }
+  
+  return(B_period)
 }
 
 estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat){
