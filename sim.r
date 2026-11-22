@@ -64,9 +64,9 @@ B_hat = CVXR::value(B)
 assert_dimensions(B_hat, dim_=c(p, N*T_))
 
 # Identify the structure of slopes
-B_struct = identify_blocks(N=N, T_=T_, p=p, B=B_hat)
-block_hat = B_struct$block
+B_hat_struct = identify_blocks(N=N, T_=T_, p=p, B=B_hat)
+block_hat = B_hat_struct$block
 b0_hat = max(block_hat)
-clog(paste0("group=", vec2str(B_struct$group), ", regime=", vec2str(B_struct$regime), ", b0_hat=", b0_hat))
+clog(paste0("group=", vec2str(B_hat_struct$group), ", regime=", vec2str(B_hat_struct$regime), ", b0_hat=", b0_hat))
 
 

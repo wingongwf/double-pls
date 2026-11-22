@@ -208,7 +208,7 @@ generate_data = function(N, T_, p, r, phi, K0, m0, pi_, L){
   assert_dimensions(eps, dim_=c(N, T_))
   
   # slopes
-  # beta: N x p
+  # B: N x p
   B = generate_slopes(N=N, T_=T_, p=p, K0=K0, m0=m0)
   assert_dimensions(B, dim_=c(N, T_, p))
   
