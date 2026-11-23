@@ -238,6 +238,28 @@ identify_blocks = function(N, T_, p, B, tol=1e-8){
   return(list(group=group, regime=regime, block=block))
 }
 
+estimate_slopes = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
+  # Step 1: estimate the slopes B with given gamma_1 and gamma_2
+  M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
+  B_hat = estimate_slopes_pre_selection(
+    N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+  
+  # Step 2: estimate groups and regimes in slopes
+  group_hat = estimate_groups(N=N, T_=T_, p=p, B=B_hat)
+  regime_hat = estimate_regimes(N=N, T_=T_, p=p, B=B_hat)
+  K_hat = max(group_hat)
+  m_hat = max(regime_hat) - 1
+  clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
+  
+  # Step 3: post-selection estimation of slopes
+  # A_hat: K_hat x (m_hat+1) x p
+  A_hat = estimate_slopes_post_selection(
+    p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
+  assert_dimensions(A_hat, dim_=c(K_hat, m_hat+1, p))
+  
+  return(list(A_hat=A_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
+}
+
 estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1, gamma_2){
   # Decision variables
   # B: p x N*T_
