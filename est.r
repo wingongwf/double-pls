@@ -277,11 +277,11 @@ estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1
   # Run optimization to estimate B: B_hat
   prob = CVXR::Problem(objective)
   solution = CVXR::psolve(prob)
-  stopifnot(CVXR::status(prob) == "optimal")  # assert convergence
   num_iters = CVXR::solver_stats(prob)@num_iters
   solve_time = CVXR::solver_stats(prob)@solve_time
   clog(paste0("solve_time=", round(solve_time,2), ", ", "num_iters=", num_iters))
-  
+  stopifnot(CVXR::status(prob) == "optimal")  # assert convergence
+
   B_hat = CVXR::value(B)
   assert_dimensions(B_hat, dim_=c(p, N*T_))
   
@@ -350,15 +350,24 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
       
       sum_XMX = 0
       sum_XMy = 0
+      num_obs = 0
       for (i in 1:N){
         if (group_hat[i] == l){
           X_iu = X[i,periods,]
           y_iu = y[i,periods]
           M_F_hat_iu = M_F_hat[periods,periods]
+          
+          # reshape vectors to conformable matrices when num_periods=1
+          if (num_periods == 1){
+            X_iu = matrix(data=X_iu, nrow=num_periods, ncol=p)
+            M_F_hat_iu = matrix(data=M_F_hat_iu, nrow=num_periods, ncol=num_periods)
+          }
+          
+          # check dimensions
           assert_dimensions(X_iu, dim_=c(num_periods, p))
           assert_dimensions(y_iu, dim_=num_periods)
-          assert_dimensions(M_F_hat_iu, dim_=c(num_periods, num_periods))
-          
+          assert_dimensions(M_F_hat_iu, dim_=c(num_periods, num_periods))        
+
           sum_XMX_i = t(X_iu) %*% M_F_hat_iu %*% X_iu
           assert_dimensions(sum_XMX_i, dim_=c(p, p))
           sum_XMX = sum_XMX + sum_XMX_i
@@ -366,22 +375,23 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
           sum_XMy_i = t(X_iu) %*% M_F_hat_iu %*% y_iu
           assert_dimensions(sum_XMy_i, dim_=c(p, 1))
           sum_XMy = sum_XMy + sum_XMy_i
+          
+          num_obs = num_obs + num_periods
         }
       }
       
-      A_hat_lu = solve(sum_XMX) %*% sum_XMy
+      # Use the Moore-Penrose inverse to handle the cases when sum_XMX is singular
+      A_hat_lu = MASS::ginv(sum_XMX) %*% sum_XMy
       assert_dimensions(A_hat_lu, dim_=c(p, 1))
       A_hat_lu = A_hat_lu[,1]
-      
+
       assert_dimensions(A_hat[l,u,], A_hat_lu)
       A_hat[l,u,] = A_hat_lu
+      clog(paste0("A_hat_lu=", vec2str(A_hat_lu), ", l=", l, ", u=", u, ", num_obs=", num_obs))
     }
   }
   
   return(A_hat)
 }
-
-
-
 
 

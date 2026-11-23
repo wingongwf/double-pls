@@ -30,6 +30,15 @@ get_B_t = function(B, t, T_, N, p){
   return(B_t)
 }
 
+is_invertible = function(A){
+  # Check if a square matrix A is invertible or not
+  num_row = dim(A)[1]
+  num_col = dim(A)[2]
+  stopifnot(num_row==num_col)
+  
+  return(qr(A)$rank == nrow(A))
+}
+
 vec2str = function(vec){
   string = paste(vec, collapse = " ")
   return(string)
