@@ -39,16 +39,17 @@ gamma_2 = NULL
 
 # Step 3: estimate the slopes B with given gamma_1 and gamma_2
 M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
-B_hat = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
+B_hat = estimate_slopes_pre_selection(
+  N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
 
 # Step 4: identify the structure of slopes: groups and regimes
-group_hat = identify_groups(N=N, T_=T_, p=p, B=B_hat)
-regime_hat = identify_regimes(N=N, T_=T_, p=p, B=B_hat)
+group_hat = estimate_groups(N=N, T_=T_, p=p, B=B_hat)
+regime_hat = estimate_regimes(N=N, T_=T_, p=p, B=B_hat)
 K_hat = max(group_hat)
 m_hat = max(regime_hat) - 1
 clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
 
-# Step5: post-selection estimation of slopes
+# Step 5: post-selection estimation of slopes
 # A_hat: K_hat x (m_hat+1) x p
 A_hat = estimate_slopes_post_selection(
   p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)

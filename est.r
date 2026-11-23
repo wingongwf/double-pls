@@ -122,7 +122,7 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
   return(penalty_time_dimension)
 }
 
-identify_groups = function(N, T_, p, B, tol=1e-8){
+estimate_groups = function(N, T_, p, B, tol=1e-8){
   # Put cross-sectional units into groups
   group = rep(NA, N)
   group[1] = 1   # put i=1 into first group
@@ -169,7 +169,7 @@ identify_groups = function(N, T_, p, B, tol=1e-8){
   return(group)
 }
 
-identify_regimes = function(N, T_, p, B, tol=1e-8){
+estimate_regimes = function(N, T_, p, B, tol=1e-8){
   # Put periods into regimes
   regime = rep(NA, T_)
   regime[1] = 1   # put t=1 into first regime
@@ -238,7 +238,7 @@ identify_blocks = function(N, T_, p, B, tol=1e-8){
   return(list(group=group, regime=regime, block=block))
 }
 
-estimate_slopes = function(N, T_, p, X, y, M_F_hat, kappa){
+estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1, gamma_2){
   # Decision variables
   # B: p x N*T_
   B = CVXR::Variable(c(p, N*T_))
@@ -287,8 +287,8 @@ estimate_slopes_by_period = function(N, T_, p, X, y){
   assert_dimensions(y_cross_section_mean, dim_=T_)
   
   for (t in 1:T_){
-    sum_1 = 0
-    sum_2 = 0
+    sum_XX = 0
+    sum_Xy = 0
     
     for (i in 1:N){
       assert_dimensions(X[i,t,], dim_=p)
@@ -299,14 +299,14 @@ estimate_slopes_by_period = function(N, T_, p, X, y){
       
       XX = X_tilde_it %*% t(X_tilde_it)
       assert_dimensions(XX, dim_=c(p, p))
-      sum_1 = sum_1 + XX
+      sum_XX = sum_XX + XX
       
       Xy = X_tilde_it * y_tilde_it
       assert_dimensions(Xy, dim_=p)
-      sum_2 = sum_2 + Xy
+      sum_Xy = sum_Xy + Xy
     }
     
-    B_period_t = solve(sum_1) %*% sum_2
+    B_period_t = solve(sum_XX) %*% sum_Xy
     assert_dimensions(B_period_t, dim_=c(p, 1))
     B_period_t = B_period_t[,1]
     
