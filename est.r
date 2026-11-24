@@ -41,6 +41,7 @@ compute_residual_sum_squares = function(N, T_, p, X, y, B, M_F_hat){
 }
 
 compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
+  omega_cs = compute_omega_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
   penalty_cross_section = 0
   for (i in 1:N){
     for (j in 1:N){
@@ -54,7 +55,6 @@ compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
         difference = CVXR::vec(difference)
         assert_dimensions(difference, dim_=c(p*T_, 1))
         
-        omega_cs = compute_omega_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
         penalty_ij = omega_cs[i,j] * CVXR::p_norm(difference, 2)
         assert_dimensions(penalty_ij, dim_=c(1, 1))
         penalty_cross_section = penalty_cross_section + penalty_ij
@@ -67,6 +67,7 @@ compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
 }
 
 compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
+  omega_period = compute_omega_period(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa)
   penalty_time_dimension = 0
   for (t in 2:T_){
     B_t = get_B_t(B=B, t=t, T_=T_, N=N, p=p)
@@ -78,7 +79,6 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
     difference = CVXR::vec(difference)
     assert_dimensions(difference, dim_=c(p*N, 1))
     
-    omega_period = compute_omega_period(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa)
     penalty_t = omega_period[t] * CVXR::p_norm(difference, 2)
     assert_dimensions(penalty_t, dim_=c(1, 1))
     penalty_time_dimension = penalty_time_dimension + penalty_t

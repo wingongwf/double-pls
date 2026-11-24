@@ -4,10 +4,10 @@ source("est.r")
 source("util.r")
 
 # Set up parameters
-N = 30
-T_ = 50
-r = 2
-p = 4
+N = 20     # TODO: small parameters test case
+T_ = 30    # TODO: small parameters test case
+r = 2  
+p = 2      # TODO: small parameters test case
 phi = 0.8
 K0 = 2
 m0 = 1
@@ -31,16 +31,14 @@ assert_dimensions(X, dim_=c(N, T_, p))
 assert_dimensions(y, dim_=c(N, T_))
 
 # Step 2: fine-tune gamma_1 and gamma_2
-gamma_1 = 1
-gamma_2 = 1
-
-gamma_1 = NULL
-gamma_2 = NULL
+gamma_1 = 100  # TODO: need tuning
+gamma_2 = 100  # TODO: need tuning
 
 # Step 3: estimation of slopes
 fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
 A_hat = fit$A_hat
-
-
+group_hat = fit$group_hat
+regime_hat = fit$regime_hat
+clog(paste0("group_hat=", vec2str(group_hat), ", regime_hat=", vec2str(regime_hat)))
 
 
