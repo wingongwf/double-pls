@@ -190,54 +190,6 @@ estimate_regimes = function(N, T_, p, B, tol=1e-8){
   return(regime)
 }
 
-identify_blocks = function(N, T_, p, B, tol=1e-8){
-  # Put cross-sectional units and periods into blocks
-  group = identify_groups(N=N, T_=T_, p=p, B=B, tol=tol)
-  regime = identify_regimes(N=N, T_=T_, p=p, B=B, tol=tol)
-  
-  block = matrix(NA, N, T_)
-  block[1,1] = 1   # put i=1,t=1 into first block
-  
-  for (i in 1:N){
-    is_new_block = TRUE
-
-    # Case: t=1
-    if (i == 1){
-      is_new_block = FALSE  # already initialized
-    } else{
-      # check against all previous units to find same group
-      for (j in 1:(i-1)){
-        if (group[i] == group[j]){   # same group
-          clog(paste0("i=", i, " same group as i=", j))
-          block[i,1] = block[j, 1]
-          is_new_block = FALSE
-          break
-        }
-      }
-    }
-    
-    # if first unit in group, then assign a new block
-    if (is_new_block){
-      clog(paste0("i=", i, " assign to a new block=", max(block, na.rm=TRUE)+1))
-      block[i,1] = max(block, na.rm=TRUE) + 1
-    }
-    
-    for (t in 2:T_){
-      if (regime[t] == regime[t-1]){
-        clog(paste0("i=", i, ": t=", t, " in same regime as t=", t-1, ", assign to block=", block[i, t-1]))
-        block[i,t] = block[i, t-1]    # same regime
-      } else{
-        clog(paste0("i=", i, ": t=", t, " in different regime than t=", t-1, ", assign to block=", block[i, t-1]+1))
-        block[i,t] = block[i, t-1] + 1   # different regime
-      }
-    }
-  }
-  
-  stopifnot(sum(is.na(block)) == 0)
-  stopifnot(max(block) == max(group)*max(regime))  # assert no. of blocks is as expected
-  return(list(group=group, regime=regime, block=block))
-}
-
 estimate_slopes = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
   # Step 1: estimate the slopes B with given gamma_1 and gamma_2
   M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
