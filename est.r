@@ -122,6 +122,57 @@ compute_omega_period = function(N, T_, p, X, y, kappa){
   return(omega)
 }
 
+compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+  A_hat = fit$A_hat
+  M_F_hat = fit$M_F_hat
+  group_hat = fit$group_hat
+  regime_hat = fit$regime_hat
+  K_hat = fit$K_hat
+  m_hat = fit$m_hat
+  
+  clog(paste0("gamma_1=", round(gamma_1,2), ", gamma_2=", round(gamma_2,2), ", K_hat=", K_hat, ", m_hat=", m_hat))
+  
+  residual_sum_squares = 0
+  for (l in 1:K_hat){
+    for (u in 1:m_hat+1){
+      clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
+      periods = which(regime_hat==u)
+      num_periods = length(periods)
+      
+      for (i in 1:N){
+        if (group_hat[i] == l){
+          X_iu = X[i,periods,]
+          y_iu = y[i,periods]
+          M_F_hat_iu = M_F_hat[periods,periods]
+          A_hat_lu = A_hat[l,u,]
+          
+          # reshape vectors to conformable matrices when num_periods=1
+          if (num_periods == 1){
+            X_iu = matrix(data=X_iu, nrow=num_periods, ncol=p)
+            M_F_hat_iu = matrix(data=M_F_hat_iu, nrow=num_periods, ncol=num_periods)
+          }
+          
+          # check dimensions
+          assert_dimensions(X_iu, dim_=c(num_periods, p))
+          assert_dimensions(y_iu, dim_=num_periods)
+          assert_dimensions(M_F_hat_iu, dim_=c(num_periods, num_periods))
+          assert_dimensions(A_hat_lu, dim_=p)
+          
+          residual_sum_squares_iu = sum((M_F_hat_iu %*% (y_iu - X_iu %*% A_hat_lu))^2)
+          assert_dimensions(residual_sum_squares_iu, dim_=1)
+          residual_sum_squares = residual_sum_squares + residual_sum_squares_iu
+        }
+      }
+    }
+  }
+  
+  phi = 0.5 * log(N*T_) / sqrt(N*T_)
+  ic = 1/(N*T_) * residual_sum_squares + phi * p * (K_hat + m_hat + 1)
+  
+  return(ic)
+}
+
 estimate_groups = function(N, T_, p, B, tol=1e-8){
   # Put cross-sectional units into groups
   group = rep(NA, N)
@@ -209,7 +260,7 @@ estimate_slopes = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
     p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
   assert_dimensions(A_hat, dim_=c(K_hat, m_hat+1, p))
   
-  return(list(A_hat=A_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
+  return(list(A_hat=A_hat, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
 }
 
 estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1, gamma_2){
