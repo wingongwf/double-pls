@@ -40,25 +40,6 @@ compute_residual_sum_squares = function(N, T_, p, X, y, B, M_F_hat){
   return(residual_sum_squares)
 }
 
-compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
-  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat)
-  assert_dimensions(B_cs, dim_=c(p, N))
-  
-  omega = matrix(NA, N, N)
-  for (i in 1:N){
-    for (j in 1:N){
-      if (i < j){
-        omega_ij = sqrt(sum((B_cs[,i] - B_cs[,j])^2)) ^ (-kappa)
-        stopifnot(length(omega_ij)==1)
-        omega[i,j] = omega_ij
-      }
-    }
-  }
-  
-  stopifnot(sum(!is.na(omega)) == (N-1)*N/2)
-  return(omega)
-}
-
 compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
   penalty_cross_section = 0
   for (i in 1:N){
@@ -85,21 +66,6 @@ compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
   return(penalty_cross_section)
 }
 
-compute_omega_period = function(N, T_, p, X, y, kappa){
-  B_period = estimate_slopes_by_period(N=N, T_=T_, p=p, X=X, y=y)
-  assert_dimensions(B_period, dim_=c(p, T_))
-  
-  omega = rep(NA, T_)
-  for (t in 2:T_){
-    omega_t = sqrt(sum((B_period[,t] - B_period[,t-1])^2)) ^ (-kappa)
-    assert_dimensions(omega_t, dim_=1)
-    omega[t] = omega_t
-  }
-  
-  stopifnot(sum(!is.na(omega)) == T_-1)
-  return(omega)
-}
-
 compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
   penalty_time_dimension = 0
   for (t in 2:T_){
@@ -120,6 +86,40 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
   
   assert_dimensions(penalty_time_dimension, dim_=c(1,1))
   return(penalty_time_dimension)
+}
+
+compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
+  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat)
+  assert_dimensions(B_cs, dim_=c(p, N))
+  
+  omega = matrix(NA, N, N)
+  for (i in 1:N){
+    for (j in 1:N){
+      if (i < j){
+        omega_ij = sqrt(sum((B_cs[,i] - B_cs[,j])^2)) ^ (-kappa)
+        stopifnot(length(omega_ij)==1)
+        omega[i,j] = omega_ij
+      }
+    }
+  }
+  
+  stopifnot(sum(!is.na(omega)) == (N-1)*N/2)
+  return(omega)
+}
+
+compute_omega_period = function(N, T_, p, X, y, kappa){
+  B_period = estimate_slopes_by_period(N=N, T_=T_, p=p, X=X, y=y)
+  assert_dimensions(B_period, dim_=c(p, T_))
+  
+  omega = rep(NA, T_)
+  for (t in 2:T_){
+    omega_t = sqrt(sum((B_period[,t] - B_period[,t-1])^2)) ^ (-kappa)
+    assert_dimensions(omega_t, dim_=1)
+    omega[t] = omega_t
+  }
+  
+  stopifnot(sum(!is.na(omega)) == T_-1)
+  return(omega)
 }
 
 estimate_groups = function(N, T_, p, B, tol=1e-8){
