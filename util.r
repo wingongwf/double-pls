@@ -11,6 +11,19 @@ get_circular_index = function(pos, step, size){
   return(new)
 }
 
+get_gamma_grid = function(gamma_max, gamma_min_ratio, num_gamma){
+  gamma_1_max = gamma_max[1]
+  gamma_2_max = gamma_max[2]
+  gamma_1_min = gamma_1_max * gamma_min_ratio
+  gamma_2_min = gamma_2_max * gamma_min_ratio
+  
+  gamma_1_grid = 10 ^ seq(from=log10(gamma_1_min), to=log10(gamma_1_max), length.out=num_gamma)
+  gamma_2_grid = 10 ^ seq(from=log10(gamma_2_min), to=log10(gamma_2_max), length.out=num_gamma)
+  
+  gamma_grid = list(gamma_1=gamma_1_grid, gamma_2=gamma_2_grid)
+  return(gamma_grid)
+}
+
 # Get slopes for unit i at all times
 get_B_i = function(B, i, T_, p){
   index_start = (i-1) * T_ + 1

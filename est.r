@@ -172,6 +172,34 @@ compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2
   return(ic)
 }
 
+tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
+  num_gamma_1 = length(gamma_grid$gamma_1)
+  num_gamma_2 = length(gamma_grid$gamma_2)
+  ic_values = matrix(NA, nrow=num_gamma_1, ncol=num_gamma_2)
+  
+  for (i in 1:num_gamma_1){
+    for (j in 1:num_gamma_2){
+      gamma_1 = gamma_grid$gamma_1[i]
+      gamma_2 = gamma_grid$gamma_2[j]
+      ic_ij = compute_information_criterion(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+      ic_values[i,j] = ic_ij
+      if (verbose) clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", ic=", round(ic_ij,2)))
+    }
+  }
+  
+  stopifnot(sum(is.na(ic_values)) == 0)
+  pos_min_ic = which(ic_values == min(ic_values), arr.ind=TRUE)
+  clog(paste0("pos_min_ic=", vec2str(apply(pos_min_ic, 1, paste, collapse=","))))
+  
+  # Select the first row (even when there are multiple gamma pairs that give same IC)
+  gamma_1_hat = gamma_grid$gamma_1[pos_min_ic[1,"row"]]
+  gamma_2_hat = gamma_grid$gamma_2[pos_min_ic[1,"col"]]
+  gamma_hat = c(gamma_1_hat, gamma_2_hat)
+  clog(paste0("gamma_hat=", vec2str(round(gamma_hat,4))))
+  
+  return(gamma_hat)
+}
+
 estimate_groups = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
   # Put cross-sectional units into groups
   group = rep(NA, N)
