@@ -222,7 +222,7 @@ generate_data = function(N, T_, p, r, phi, K0, m0, pi_, L){
   y = compute_y(X=X, B=B, F_=F_, lambda=lambda, eps=eps)
   assert_dimensions(y, dim_=c(N, T_))
   
-  return(list(X=X, y=y))
+  return(list(X=X, y=y, B=B))
 }
 
 

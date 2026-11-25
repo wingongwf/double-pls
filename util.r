@@ -52,9 +52,61 @@ is_invertible = function(A){
   return(qr(A)$rank == nrow(A))
 }
 
+B02vec = function(B0, N, T_, p){
+  B0_vec = rep(NA, N*T_*p)
+  for (i in 1:N){
+    for (t in 1:T_){
+      B0_it = B0[i,t,]
+      assert_dimensions(B0_it, dim_=p)
+      
+      start_index = (i-1)*T_*p + (t-1)*p + 1
+      end_index = start_index + p - 1
+      assert_dimensions(B0_vec[start_index:end_index], B0_it)
+      B0_vec[start_index:end_index] = B0_it
+    }
+  }
+  
+  stopifnot(sum(is.na(B0_vec)) == 0)
+  return(B0_vec)
+}
+
+Btilde2vec = function(A_hat, group_hat, regime_hat, N, T_, p){
+  B_tilde_vec = rep(NA, N*T_*p)
+  for (i in 1:N){
+    for (t in 1:T_){
+      group_i = group_hat[i]
+      regime_t = regime_hat[t]
+      B_tilde_it = A_hat[group_i,regime_t,]
+      assert_dimensions(B_tilde_it, dim_=p)
+      
+      start_index = (i-1)*T_*p + (t-1)*p + 1
+      end_index = start_index + p - 1
+      assert_dimensions(B_tilde_vec[start_index:end_index], B_tilde_it)
+      B_tilde_vec[start_index:end_index] = B_tilde_it
+    }
+  }
+  
+  stopifnot(sum(is.na(B_tilde_vec)) == 0)
+  return(B_tilde_vec)
+}
+
 vec2str = function(vec){
   string = paste(vec, collapse = " ")
   return(string)
+}
+
+make_csv_Btilde = function(N, T_, p, filename){
+  header = ""
+  for (i in 1:N){
+    for (t in 1:T_){
+      for (k in 1:p){
+        header = paste0(header, "Btilde_", i, "_", t, "_", k, ",")
+      }
+    }
+  }
+  
+  header = paste0(substr(header, 1, nchar(header)-1), "\n")
+  cat(header, file=filename, append=TRUE)
 }
 
 clog = function(msg, file=LOG_FILE){
