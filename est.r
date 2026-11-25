@@ -136,7 +136,6 @@ compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2
   residual_sum_squares = 0
   for (l in 1:K_hat){
     for (u in 1:m_hat+1){
-      clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
       periods = which(regime_hat==u)
       num_periods = length(periods)
       

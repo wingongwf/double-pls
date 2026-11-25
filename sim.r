@@ -56,6 +56,7 @@ for (i in 1:length(gamma_1_values)){
 pos_best = which(ic_values == min(ic_values), arr.ind=TRUE)
 gamma_1_best = gamma_1_values[pos_best[1,"row"]]
 gamma_2_best = gamma_2_values[pos_best[1,"col"]]
+clog(paste0("gamma_1_best=", round(gamma_1_best,4), ", gamma_2_best=", round(gamma_2_best,4)))
 
 # Step 3: estimation of slopes with given gamma_1 and gamma_2
 fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1_best, gamma_2=gamma_2_best)
