@@ -89,7 +89,7 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
 }
 
 compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
-  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat)
+  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y)
   assert_dimensions(B_cs, dim_=c(p, N))
   
   omega = matrix(NA, N, N)
@@ -173,7 +173,7 @@ compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2
   return(ic)
 }
 
-estimate_groups = function(N, T_, p, B, tol=1e-8){
+estimate_groups = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
   # Put cross-sectional units into groups
   group = rep(NA, N)
   group[1] = 1   # put i=1 into first group
@@ -192,17 +192,17 @@ estimate_groups = function(N, T_, p, B, tol=1e-8){
       for (mem in members){
         B_hat_mem = get_B_i(B=B, i=mem, T_=T_, p=p)
         if (max(abs(as.vector(B_hat_i - B_hat_mem))) > tol){
-          clog(paste0("i=", i, " different than i=", mem, " in group=", l))
+          if (verbose) clog(paste0("i=", i, " different than i=", mem, " in group=", l))
           is_group_l = FALSE
           break
         } else{
-          clog(paste0("i=", i, " same as i=", mem, " in group=", l))
+          if (verbose) clog(paste0("i=", i, " same as i=", mem, " in group=", l))
         }
       }
       
       # if B_i is equal to ALL members, then assign to group l
       if (is_group_l){
-        clog(paste0("i=", i, " same as i=", vec2str(members), ", assign to group=", l))
+        if (verbose) clog(paste0("i=", i, " same as i=", vec2str(members), ", assign to group=", l))
         group[i] = l
         is_assigned = TRUE
         break
@@ -212,7 +212,7 @@ estimate_groups = function(N, T_, p, B, tol=1e-8){
     # if B_i does not belong to any collected groups, then assign to a new group
     if(!is_assigned){
       new_group = max(collected_groups) + 1
-      clog(paste0("i=", i, " assign to new group=", new_group))
+      if (verbose) clog(paste0("i=", i, " assign to new group=", new_group))
       group[i] = new_group
     }
   }
@@ -220,7 +220,7 @@ estimate_groups = function(N, T_, p, B, tol=1e-8){
   return(group)
 }
 
-estimate_regimes = function(N, T_, p, B, tol=1e-8){
+estimate_regimes = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
   # Put periods into regimes
   regime = rep(NA, T_)
   regime[1] = 1   # put t=1 into first regime
@@ -230,10 +230,10 @@ estimate_regimes = function(N, T_, p, B, tol=1e-8){
     B_tminus1 = get_B_t(B=B, t=t-1, T_=T_, N=N, p=p)
     
     if (max(abs(as.vector(B_t - B_tminus1))) > tol){
-      clog(paste0("t=", t, " different regime than t=", t-1, ", assign to regime=", regime[t-1] + 1))
+      if (verbose) clog(paste0("t=", t, " different regime than t=", t-1, ", assign to regime=", regime[t-1] + 1))
       regime[t] = regime[t-1] + 1 
     } else{
-      clog(paste0("t=", t, " same regime as t=", t-1, ", assign to regime=", regime[t-1]))
+      if (verbose) clog(paste0("t=", t, " same regime as t=", t-1, ", assign to regime=", regime[t-1]))
       regime[t] = regime[t-1]
     }
   }
@@ -291,7 +291,45 @@ estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1
   return(B_hat)
 }
 
-estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
+estimate_slopes_by_cross_section = function(N, p, X, y){
+  B_cs = matrix(NA, p, N)
+  X_time_mean = apply(X, c(1,3), mean)
+  y_time_mean = apply(y, 1, mean)
+  assert_dimensions(X_time_mean, dim_=c(N,p))
+  assert_dimensions(y_time_mean, dim_=N)
+
+  for (i in 1:N){
+    sum_XX = 0
+    sum_Xy = 0
+
+    for (t in 1:T_){
+      assert_dimensions(X[i,t,], dim_=p)
+      X_ddot_it = X[i,t,] - X_time_mean[i,]
+
+      assert_dimensions(y[i,t], dim_=1)
+      y_ddot_it = y[i,t] - y_time_mean[i]
+
+      XX = X_ddot_it %*% t(X_ddot_it)
+      assert_dimensions(XX, dim_=c(p, p))
+      sum_XX = sum_XX + XX
+
+      Xy = X_ddot_it * y_ddot_it
+      assert_dimensions(Xy, dim_=p)
+      sum_Xy = sum_Xy + Xy
+    }
+
+    B_cs_i = solve(sum_XX) %*% sum_Xy
+    assert_dimensions(B_cs_i, dim_=c(p, 1))
+    B_cs_i = B_cs_i[,1]
+
+    assert_dimensions(B_cs[,i], B_cs_i)
+    B_cs[,i] = B_cs_i
+  }
+
+  return(B_cs)
+}
+
+estimate_slopes_by_cross_section_CCE = function(N, p, X, y, M_F_hat){
   B_cs = matrix(NA, p, N)
   for (i in 1:N){
     B_cs_i = solve(t(X[i,,]) %*% M_F_hat %*% X[i,,]) %*% t(X[i,,]) %*% M_F_hat %*% y[i,]
@@ -300,7 +338,7 @@ estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
     assert_dimensions(B_cs[,i], B_cs_i)
     B_cs[,i] = B_cs_i
   }
-  
+
   return(B_cs)
 }
 
@@ -342,12 +380,12 @@ estimate_slopes_by_period = function(N, T_, p, X, y){
   return(B_period)
 }
 
-estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat){
+estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat, verbose=FALSE){
   A_hat = array(NA, dim=c(K_hat, m_hat+1, p))
   
   for (l in 1:K_hat){
     for (u in 1:(m_hat+1)){
-      clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
+      if (verbose) clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
       periods = which(regime_hat==u)
       num_periods = length(periods)
       
@@ -390,7 +428,7 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
 
       assert_dimensions(A_hat[l,u,], A_hat_lu)
       A_hat[l,u,] = A_hat_lu
-      clog(paste0("A_hat_lu=", vec2str(A_hat_lu), ", l=", l, ", u=", u, ", num_obs=", num_obs))
+      clog(paste0("A_hat_lu=", vec2str(round(A_hat_lu,2)), ", l=", l, ", u=", u, ", num_obs=", num_obs))
     }
   }
   

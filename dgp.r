@@ -61,11 +61,11 @@ generate_slopes_it = function(i, t, N, T_, p, K0, m0){
     if (t<=0.4*T_){
       B_it = rep(0, p)
     } else{
-      B_it = rep(2, p)
+      B_it = rep(1, p)
     }
   } else{
     if (t<=0.4*T_){
-      B_it = rep(1, p)
+      B_it = rep(2, p)
     } else{
       B_it = rep(3, p)
     }
