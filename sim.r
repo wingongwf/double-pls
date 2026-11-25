@@ -4,8 +4,8 @@ source("est.r")
 source("util.r")
 
 # Set up parameters
-N = 20     # TODO: small parameters test case
-T_ = 30    # TODO: small parameters test case
+N = 10     # TODO: small parameters test case
+T_ = 20    # TODO: small parameters test case
 r = 2  
 p = 2      # TODO: small parameters test case
 phi = 0.8
@@ -31,8 +31,8 @@ assert_dimensions(X, dim_=c(N, T_, p))
 assert_dimensions(y, dim_=c(N, T_))
 
 # Step 2: fine-tune gamma_1 and gamma_2
-gamma_1 = 100  # TODO: need tuning
-gamma_2 = 100  # TODO: need tuning
+gamma_1 = 10  # TODO: need tuning
+gamma_2 = 50  # TODO: need tuning
 
 # Step 3: estimation of slopes
 fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)

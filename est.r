@@ -89,7 +89,7 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
 }
 
 compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
-  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat)
+  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y)
   assert_dimensions(B_cs, dim_=c(p, N))
   
   omega = matrix(NA, N, N)
@@ -240,7 +240,45 @@ estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1
   return(B_hat)
 }
 
-estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
+estimate_slopes_by_cross_section = function(N, p, X, y){
+  B_cs = matrix(NA, p, N)
+  X_time_mean = apply(X, c(1,3), mean)
+  y_time_mean = apply(y, 1, mean)
+  assert_dimensions(X_time_mean, dim_=c(N,p))
+  assert_dimensions(y_time_mean, dim_=N)
+
+  for (i in 1:N){
+    sum_XX = 0
+    sum_Xy = 0
+
+    for (t in 1:T_){
+      assert_dimensions(X[i,t,], dim_=p)
+      X_ddot_it = X[i,t,] - X_time_mean[i,]
+
+      assert_dimensions(y[i,t], dim_=1)
+      y_ddot_it = y[i,t] - y_time_mean[i]
+
+      XX = X_ddot_it %*% t(X_ddot_it)
+      assert_dimensions(XX, dim_=c(p, p))
+      sum_XX = sum_XX + XX
+
+      Xy = X_ddot_it * y_ddot_it
+      assert_dimensions(Xy, dim_=p)
+      sum_Xy = sum_Xy + Xy
+    }
+
+    B_cs_i = solve(sum_XX) %*% sum_Xy
+    assert_dimensions(B_cs_i, dim_=c(p, 1))
+    B_cs_i = B_cs_i[,1]
+
+    assert_dimensions(B_cs[,i], B_cs_i)
+    B_cs[,i] = B_cs_i
+  }
+
+  return(B_cs)
+}
+
+estimate_slopes_by_cross_section_CCE = function(N, p, X, y, M_F_hat){
   B_cs = matrix(NA, p, N)
   for (i in 1:N){
     B_cs_i = solve(t(X[i,,]) %*% M_F_hat %*% X[i,,]) %*% t(X[i,,]) %*% M_F_hat %*% y[i,]
@@ -249,7 +287,7 @@ estimate_slopes_by_cross_section = function(N, p, X, y, M_F_hat){
     assert_dimensions(B_cs[,i], B_cs_i)
     B_cs[,i] = B_cs_i
   }
-  
+
   return(B_cs)
 }
 
