@@ -135,7 +135,7 @@ compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2
   
   residual_sum_squares = 0
   for (l in 1:K_hat){
-    for (u in 1:m_hat+1){
+    for (u in 1:(m_hat+1)){
       periods = which(regime_hat==u)
       num_periods = length(periods)
       
@@ -198,6 +198,41 @@ tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
   clog(paste0("gamma_hat=", vec2str(round(gamma_hat,4))))
   
   return(gamma_hat)
+}
+
+tune_gamma_max = function(start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
+  gamma = start_value
+  clog(paste0("try gamma=", gamma))
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+  
+  if (fit$K_hat!=1 || fit$m_hat!=0){
+    # if gamma too small
+    while (fit$K_hat!=1 || fit$m_hat!=0){
+      gamma = gamma * multiplier
+      if (gamma > upper_bound){
+        stop("upper_bound=", upper_bound, " reached, gamma_max not found")
+      }
+      
+      clog(paste0("previous gamma too small, try gamma=", gamma))
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+    }
+    
+    return(c(gamma, gamma))
+  } else{
+    # if gamma too large
+    while (fit$K_hat==1 && fit$m_hat==0){
+      gamma = gamma / multiplier
+      if (gamma < lower_bound){
+        stop("lower_bound=", lower_bound, " reached, gamma_max not found")
+      }
+      
+      clog(paste0("previous gamma too large, try gamma=", gamma))
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+    }
+    
+    gamma_max = gamma * multiplier
+    return(c(gamma_max, gamma_max))
+  }
 }
 
 estimate_groups = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
@@ -412,7 +447,6 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
   
   for (l in 1:K_hat){
     for (u in 1:(m_hat+1)){
-      if (verbose) clog(paste0("Post-selection estimation of slopes for group=", l, ", regime=", u))
       periods = which(regime_hat==u)
       num_periods = length(periods)
       
@@ -455,7 +489,7 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
 
       assert_dimensions(A_hat[l,u,], A_hat_lu)
       A_hat[l,u,] = A_hat_lu
-      clog(paste0("A_hat_lu=", vec2str(round(A_hat_lu,2)), ", l=", l, ", u=", u, ", num_obs=", num_obs))
+      if (verbose) clog(paste0("l=", l, ", u=", u, ", A_hat_lu=", vec2str(round(A_hat_lu,2)), ", num_obs=", num_obs))
     }
   }
   

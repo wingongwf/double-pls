@@ -34,7 +34,7 @@ assert_dimensions(X, dim_=c(N, T_, p))
 assert_dimensions(y, dim_=c(N, T_))
 
 # Step 2: tune gamma_1 and gamma_2
-gamma_max = c(100, 100)  # TODO: need tuning
+gamma_max = tune_gamma_max(start_value=1)
 gamma_grid = get_gamma_grid(gamma_max=gamma_max, gamma_min_ratio=1e-4, num_gamma=5)
 gamma_hat = tune_gamma(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_grid=gamma_grid)
 
