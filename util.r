@@ -175,6 +175,22 @@ make_csv_Btilde = function(N, T_, p, filename){
   cat(header, file=filename, append=TRUE)
 }
 
+timer = function(f){
+  # Can only log scalar and named parameters
+  fn_name = deparse(substitute(f))
+  force(f)
+  function(...){
+    start = Sys.time()
+    fn_params = list(...)
+    clog(paste0(fn_name, ": status=start, ", list2str(fn_params)))
+    output = f(...)
+    
+    elapsed = difftime(Sys.time(), start, units="secs")
+    clog(paste0(fn_name, ": status=end, elapsed=", round(elapsed, 2), ", ", list2str(fn_params)))
+    return(output)
+  }
+}
+
 clog = function(msg, file=LOG_FILE){
   logline = paste0(format(Sys.time(), "%Y-%m-%d %H:%M:%OS6 "), msg, "\n")
   cat(logline)   # print to console

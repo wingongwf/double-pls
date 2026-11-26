@@ -1,4 +1,5 @@
 # This module consists of all functions for estimation.
+source("util.r")
 
 compute_M_F_hat = function(N, T_, p, X){
   # Compute the matrix that projects onto the space orthogonal to the
@@ -496,4 +497,6 @@ estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_ha
   return(A_hat)
 }
 
-
+# Time the functions
+tune_gamma = timer(tune_gamma)
+estimate_slopes = timer(estimate_slopes)
