@@ -200,7 +200,7 @@ tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
   return(gamma_hat)
 }
 
-tune_gamma_max = function(start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
+tune_gamma_max = function(N, T_, p, X, y, kappa, start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
   gamma = start_value
   clog(paste0("try gamma=", gamma))
   fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
