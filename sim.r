@@ -51,9 +51,43 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
 }
 
 # Run simulation for n_rep times
+metrics = list(
+  correct_num_groups=rep(NA, n_rep),
+  correct_membership=rep(NA, n_rep),
+  correct_num_breaks=rep(NA, n_rep),
+  correct_break_dates=rep(NA, n_rep),
+  num_groups=rep(NA, n_rep),
+  num_breaks=rep(NA, n_rep),
+  sum_squared_errors=rep(NA, n_rep),
+  size=rep(NA, n_rep)
+)
+
 for (rep in 1:n_rep){
-  run_replication(N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0, pi_=pi_, L=L, kappa=kappa)
+  metrics_rep = run_replication(N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0, pi_=pi_, L=L, kappa=kappa)
+  
+  metrics$correct_num_groups[rep] = metrics_rep$correct_num_groups
+  metrics$correct_membership[rep] = metrics_rep$correct_membership
+  metrics$correct_num_breaks[rep] = metrics_rep$correct_num_breaks
+  metrics$correct_break_dates[rep] = metrics_rep$correct_break_dates
+  metrics$num_groups[rep] = metrics_rep$num_groups
+  metrics$num_breaks[rep] = metrics_rep$num_breaks
+  metrics$sum_squared_errors[rep] = metrics_rep$sum_squared_errors
+  metrics$size[rep] = metrics_rep$size
 }
+
+correct_num_groups_and_num_breaks = metrics$correct_num_groups & metrics$correct_num_breaks
+metrics_agg = list(
+  pct_wrong_num_groups=1-mean(metrics$correct_num_groups),
+  pct_wrong_membership=1-mean(metrics$correct_membership[metrics$correct_num_groups]),
+  pct_wrong_num_breaks=1-mean(metrics$correct_num_breaks),
+  pct_wrong_break_dates=1-mean(metrics$correct_break_dates[metrics$correct_num_breaks]),
+  pct_wrong_classification=1-mean(metrics$correct_membership[correct_num_groups_and_num_breaks] &
+                                    metrics$correct_break_dates[correct_num_groups_and_num_breaks]),
+  avg_num_groups=mean(metrics$num_groups),
+  avg_num_breaks=mean(metrics$num_breaks)
+)
+clog(paste0("performance: ", list2str(metrics_agg)))
+  
 
 
 
