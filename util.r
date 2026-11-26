@@ -70,6 +70,22 @@ B02vec = function(B0, N, T_, p){
   return(B0_vec)
 }
 
+B02matrix = function(B0, N, T_, p){
+  B0_matrix = matrix(NA, p, N*T_)
+  for (i in 1:N){
+    B0_i = t(B0[i,,])
+    assert_dimensions(B0_i, dim_=c(p, T_))
+    
+    start_index = (i-1) * T_ + 1
+    end_index = start_index + T_ - 1 
+    assert_dimensions(B0_matrix[,start_index:end_index], B0_i)
+    B0_matrix[,start_index:end_index] = B0_i
+  }
+  
+  stopifnot(sum(is.na(B0_matrix)) == 0)
+  return(B0_matrix)
+}
+
 Btilde2vec = function(A_hat, group_hat, regime_hat, N, T_, p){
   B_tilde_vec = rep(NA, N*T_*p)
   for (i in 1:N){
@@ -93,6 +109,56 @@ Btilde2vec = function(A_hat, group_hat, regime_hat, N, T_, p){
 vec2str = function(vec){
   string = paste(vec, collapse = " ")
   return(string)
+}
+
+list2str = function(x, digits=NULL){
+  out = ""
+  for (item in names(x)){
+    val = ifelse(is.null(digits), x[[item]], round(x[[item]], digits))
+    out = paste0(out, item, "=", val, ", ")
+  }
+  
+  out = substring(out, 1, nchar(out)-2) # remove trailing comma
+  return(out)
+}
+
+eval_perf = function(N, T_, p, B0, fit, export=TRUE){
+  A_hat = fit$A_hat
+  group_hat = fit$group_hat
+  regime_hat = fit$regime_hat
+  K_hat = fit$K_hat
+  m_hat = fit$m_hat
+  
+  # Reshape true slopes (B0) and estimated slopes (B_tilde) to vectors
+  # B0_vec: (N*T_*p) x 1
+  # B_tilde_vec: (N*T_*p) x 1
+  B0_vec = B02vec(B0=B0, N=N, T_=T_, p=p)
+  B_tilde_vec = Btilde2vec(A_hat=A_hat, group_hat=group_hat, regime_hat=regime_hat, N=N, T_=T_, p=p)
+  assert_dimensions(B0_vec, B_tilde_vec)
+  
+  # Export B_tilde_vec to csv
+  if (export){
+    csvline = paste0(paste(B_tilde_vec, collapse=","), "\n")
+    cat(csvline, file=CSV_BETA, append=TRUE)    
+  }
+
+  B0_matrix = B02matrix(B0=B0, N=N, T_=T_, p=p)
+  group0 = estimate_groups(N=N, T_=T_, p=p, B=B0_matrix)
+  regime0 = estimate_regimes(N=N, T_=T_, p=p, B=B0_matrix)
+  sum_squared_errors = sum((B_tilde_vec - B0_vec)^2)
+  
+  metrics = list(
+    correct_num_groups=(K_hat == K0),
+    correct_membership=all(group_hat == group0),
+    correct_num_breaks=(m_hat == m0),
+    correct_break_dates=all(regime_hat == regime0),
+    num_groups=K_hat,
+    num_breaks=m_hat,
+    sum_squared_errors=sum_squared_errors,
+    size=length(B0_vec)
+  )
+  clog(paste0("performance: ", list2str(metrics,4)))
+  return(metrics)
 }
 
 make_csv_Btilde = function(N, T_, p, filename){

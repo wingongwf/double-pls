@@ -41,21 +41,8 @@ gamma_hat = tune_gamma(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_grid=gamma_
 # Step 3: estimate slopes with given gamma_1 and gamma_2
 # A_hat: K_hat x (m_hat+1) x p
 fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2])
-A_hat = fit$A_hat
-group_hat = fit$group_hat
-regime_hat = fit$regime_hat
-clog(paste0("group_hat=", vec2str(group_hat), ", regime_hat=", vec2str(regime_hat)))
 
-# Step 4: reshape true slopes (B0) and estimated slopes (B_tilde) to vectors
-# B0_vec: (N*T_*p) x 1
-# B_tilde_vec: (N*T_*p) x 1
-B0_vec = B02vec(B0=B0, N=N, T_=T_, p=p)
-B_tilde_vec = Btilde2vec(A_hat=A_hat, group_hat=group_hat, regime_hat=regime_hat, N=N, T_=T_, p=p)
-
-# Export B_tilde_vec to csv
-csv_line = paste0(paste(B_tilde_vec, collapse=","), "\n")
-cat(csv_line, file=CSV_BETA, append=TRUE)
-
-
+# Step 4: evaluate the performance
+metrics = eval_perf(N=N, T_=T_, p=p, B0=B0, fit=fit)
 
 
