@@ -1,5 +1,4 @@
 # This module consists of all functions for estimation.
-source("util.r")
 
 compute_M_F_hat = function(N, T_, p, X){
   # Compute the matrix that projects onto the space orthogonal to the

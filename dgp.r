@@ -1,7 +1,6 @@
 # This module consists of all the functions for the data generating process.
 # For arrays, we use the following order for dimensions:
 # N > T_ > r > p
-source("util.r")
 
 # Generate factors
 generate_factors = function(r, T_, phi){

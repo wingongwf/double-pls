@@ -1,35 +1,4 @@
 # This module consists of all functions for running simulations
-source("dgp.r")
-source("est.r")
-source("util.r")
-
-# parameters for simulation
-n_rep = 10  # TODO: small parameters test case
-
-# parameters for data generating process
-N = 10     # TODO: small parameters test case
-T_ = 20    # TODO: small parameters test case
-p = 2      # TODO: small parameters test case
-r = 2
-phi = 0.8
-K0 = 2
-m0 = 1
-pi_ = 0.2
-L = 5
-kappa = 2
-
-# parameters for tuning gamma
-gamma_max_start_value = 1
-gamma_min_ratio = 1e-4
-num_gamma = 5
-
-# file names
-LOG_DATETIME = format(Sys.time(), "%Y%m%d_%H%M%S")
-LOG_FILE = paste0("logs/simulation_", LOG_DATETIME, ".log")
-CSV_BETA = paste0("results/Btilde_", LOG_DATETIME, ".csv")
-
-set.seed(1233)
-make_csv_Btilde(N=N, T_=T_, p=p, filename=CSV_BETA)
 
 run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   # Step 1: generate observations X and y
@@ -59,45 +28,50 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   return(metrics)
 }
 
-# Run simulation for n_rep times
-metrics = list(
-  correct_num_groups=rep(NA, n_rep),
-  correct_membership=rep(NA, n_rep),
-  correct_num_breaks=rep(NA, n_rep),
-  correct_break_dates=rep(NA, n_rep),
-  num_groups=rep(NA, n_rep),
-  num_breaks=rep(NA, n_rep),
-  sum_squared_errors=rep(NA, n_rep),
-  size=rep(NA, n_rep)
-)
-
-for (rep in 1:n_rep){
-  metrics_rep = run_replication(N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0, pi_=pi_, L=L, kappa=kappa)
+run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa){
+  make_csv_Btilde(N=N, T_=T_, p=p, filename=CSV_BETA)
+  metrics = list(
+    correct_num_groups=rep(NA, n_rep),
+    correct_membership=rep(NA, n_rep),
+    correct_num_breaks=rep(NA, n_rep),
+    correct_break_dates=rep(NA, n_rep),
+    num_groups=rep(NA, n_rep),
+    num_breaks=rep(NA, n_rep),
+    sum_squared_errors=rep(NA, n_rep),
+    size=rep(NA, n_rep)
+  )
   
-  metrics$correct_num_groups[rep] = metrics_rep$correct_num_groups
-  metrics$correct_membership[rep] = metrics_rep$correct_membership
-  metrics$correct_num_breaks[rep] = metrics_rep$correct_num_breaks
-  metrics$correct_break_dates[rep] = metrics_rep$correct_break_dates
-  metrics$num_groups[rep] = metrics_rep$num_groups
-  metrics$num_breaks[rep] = metrics_rep$num_breaks
-  metrics$sum_squared_errors[rep] = metrics_rep$sum_squared_errors
-  metrics$size[rep] = metrics_rep$size
+  # run n_rep times
+  for (rep in 1:n_rep){
+    metrics_rep = run_replication(N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0, pi_=pi_, L=L, kappa=kappa)
+    
+    metrics$correct_num_groups[rep] = metrics_rep$correct_num_groups
+    metrics$correct_membership[rep] = metrics_rep$correct_membership
+    metrics$correct_num_breaks[rep] = metrics_rep$correct_num_breaks
+    metrics$correct_break_dates[rep] = metrics_rep$correct_break_dates
+    metrics$num_groups[rep] = metrics_rep$num_groups
+    metrics$num_breaks[rep] = metrics_rep$num_breaks
+    metrics$sum_squared_errors[rep] = metrics_rep$sum_squared_errors
+    metrics$size[rep] = metrics_rep$size
+  }
+  
+  correct_num_groups_and_num_breaks = metrics$correct_num_groups & metrics$correct_num_breaks
+  metrics_agg = list(
+    pct_wrong_num_groups=1-mean(metrics$correct_num_groups),
+    pct_wrong_membership=1-mean(metrics$correct_membership[metrics$correct_num_groups]),
+    pct_wrong_num_breaks=1-mean(metrics$correct_num_breaks),
+    pct_wrong_break_dates=1-mean(metrics$correct_break_dates[metrics$correct_num_breaks]),
+    pct_wrong_classification=1-mean(metrics$correct_membership[correct_num_groups_and_num_breaks] &
+                                      metrics$correct_break_dates[correct_num_groups_and_num_breaks]),
+    avg_num_groups=mean(metrics$num_groups),
+    avg_num_breaks=mean(metrics$num_breaks)
+  )
+  clog(paste0("performance: ", list2str(metrics_agg)))
+  return(metrics_agg)
 }
 
-correct_num_groups_and_num_breaks = metrics$correct_num_groups & metrics$correct_num_breaks
-metrics_agg = list(
-  pct_wrong_num_groups=1-mean(metrics$correct_num_groups),
-  pct_wrong_membership=1-mean(metrics$correct_membership[metrics$correct_num_groups]),
-  pct_wrong_num_breaks=1-mean(metrics$correct_num_breaks),
-  pct_wrong_break_dates=1-mean(metrics$correct_break_dates[metrics$correct_num_breaks]),
-  pct_wrong_classification=1-mean(metrics$correct_membership[correct_num_groups_and_num_breaks] &
-                                    metrics$correct_break_dates[correct_num_groups_and_num_breaks]),
-  avg_num_groups=mean(metrics$num_groups),
-  avg_num_breaks=mean(metrics$num_breaks)
-)
-clog(paste0("performance: ", list2str(metrics_agg)))
-  
-
-
+# Time the functions
+run_replication = timer(run_replication)
+run_simulation = timer(run_simulation)
 
 
