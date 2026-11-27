@@ -157,7 +157,8 @@ eval_perf = function(N, T_, p, B0, K0, m0, fit, export=TRUE){
     num_groups=K_hat,
     num_breaks=m_hat,
     sum_squared_errors=sum_squared_errors,
-    size=length(B0_vec)
+    size=length(B0_vec),
+    root_mean_squared_error=sqrt(sum_squared_errors/length(B0_vec))
   )
   clog(paste0("performance: ", list2str(metrics,4)))
   return(metrics)

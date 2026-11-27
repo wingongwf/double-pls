@@ -38,7 +38,8 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_
     num_groups=rep(NA, n_rep),
     num_breaks=rep(NA, n_rep),
     sum_squared_errors=rep(NA, n_rep),
-    size=rep(NA, n_rep)
+    size=rep(NA, n_rep),
+    root_mean_squared_error=rep(NA, n_rep)
   )
   
   # run n_rep times
@@ -55,6 +56,7 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_
     metrics$num_breaks[rep] = metrics_rep$num_breaks
     metrics$sum_squared_errors[rep] = metrics_rep$sum_squared_errors
     metrics$size[rep] = metrics_rep$size
+    metrics$root_mean_squared_error[rep] = metrics_rep$root_mean_squared_error
   }
   
   correct_num_groups_and_num_breaks = metrics$correct_num_groups & metrics$correct_num_breaks
@@ -66,7 +68,8 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_
     pct_wrong_classification=1-mean(metrics$correct_membership[correct_num_groups_and_num_breaks] &
                                       metrics$correct_break_dates[correct_num_groups_and_num_breaks]),
     avg_num_groups=mean(metrics$num_groups),
-    avg_num_breaks=mean(metrics$num_breaks)
+    avg_num_breaks=mean(metrics$num_breaks),
+    avg_root_mean_squared_error=mean(metrics$root_mean_squared_error)
   )
   clog(paste0("performance: ", list2str(metrics_agg)))
   return(metrics_agg)
