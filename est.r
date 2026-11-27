@@ -41,7 +41,7 @@ compute_residual_sum_squares = function(N, T_, p, X, y, B, M_F_hat){
 }
 
 compute_penalty_cross_section = function(N, T_, p, X, y, B, M_F_hat, kappa){
-  omega_cs = compute_omega_cross_section(N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
+  omega_cs = compute_omega_cross_section(N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa)
   penalty_cross_section = 0
   for (i in 1:N){
     for (j in 1:N){
@@ -88,8 +88,8 @@ compute_penalty_time_dimension = function(N, T_, p, X, y, B, kappa){
   return(penalty_time_dimension)
 }
 
-compute_omega_cross_section = function(N, p, X, y, M_F_hat, kappa){
-  B_cs = estimate_slopes_by_cross_section(N=N, p=p, X=X, y=y)
+compute_omega_cross_section = function(N, T_, p, X, y, M_F_hat, kappa){
+  B_cs = estimate_slopes_by_cross_section(N=N, T_=T_, p=p, X=X, y=y)
   assert_dimensions(B_cs, dim_=c(p, N))
   
   omega = matrix(NA, N, N)
@@ -343,7 +343,7 @@ estimate_slopes = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
   # Step 3: post-selection estimation of slopes
   # A_hat: K_hat x (m_hat+1) x p
   A_hat = estimate_slopes_post_selection(
-    p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
+    N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
   assert_dimensions(A_hat, dim_=c(K_hat, m_hat+1, p))
   
   return(list(A_hat=A_hat, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
@@ -373,7 +373,7 @@ estimate_slopes_pre_selection = function(opt, gamma_1, gamma_2){
   return(B_hat)
 }
 
-estimate_slopes_by_cross_section = function(N, p, X, y){
+estimate_slopes_by_cross_section = function(N, T_, p, X, y){
   B_cs = matrix(NA, p, N)
   X_time_mean = apply(X, c(1,3), mean)
   y_time_mean = apply(y, 1, mean)
@@ -462,7 +462,7 @@ estimate_slopes_by_period = function(N, T_, p, X, y){
   return(B_period)
 }
 
-estimate_slopes_post_selection = function(p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat, verbose=FALSE){
+estimate_slopes_post_selection = function(N, p, X, y, M_F_hat, group_hat, regime_hat, K_hat, m_hat, verbose=FALSE){
   A_hat = array(NA, dim=c(K_hat, m_hat+1, p))
   
   for (l in 1:K_hat){

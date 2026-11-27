@@ -162,8 +162,9 @@ compute_X = function(F_, Lambda, V){
 
 # Compute y
 compute_y = function(X, B, F_, lambda, eps){
-  N = dim(eps)[1]
-  T_ = dim(eps)[2]
+  N = dim(X)[1]
+  T_ = dim(X)[2]
+  p = dim(X)[3]
   
   y = matrix(NA, N, T_)
   for (i in 1:N){

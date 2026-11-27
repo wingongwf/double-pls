@@ -122,7 +122,7 @@ list2str = function(x, digits=NULL){
   return(out)
 }
 
-eval_perf = function(N, T_, p, B0, fit, export=TRUE){
+eval_perf = function(N, T_, p, B0, K0, m0, fit, export=TRUE){
   A_hat = fit$A_hat
   group_hat = fit$group_hat
   regime_hat = fit$regime_hat
@@ -143,9 +143,11 @@ eval_perf = function(N, T_, p, B0, fit, export=TRUE){
   }
 
   B0_matrix = B02matrix(B0=B0, N=N, T_=T_, p=p)
+  sum_squared_errors = sum((B_tilde_vec - B0_vec)^2)
   group0 = estimate_groups(N=N, T_=T_, p=p, B=B0_matrix)
   regime0 = estimate_regimes(N=N, T_=T_, p=p, B=B0_matrix)
-  sum_squared_errors = sum((B_tilde_vec - B0_vec)^2)
+  stopifnot(max(group0) == K0)
+  stopifnot(max(regime0) == m0+1)
   
   metrics = list(
     correct_num_groups=(K_hat == K0),
@@ -173,6 +175,36 @@ make_csv_Btilde = function(N, T_, p, filename){
   
   header = paste0(substr(header, 1, nchar(header)-1), "\n")
   cat(header, file=filename, append=TRUE)
+}
+
+read_args = function(args){
+  args = sub("^--", "", args)
+  params = strsplit(args, "=", fixed=TRUE)
+  params = setNames(lapply(params, `[`, 2), sapply(params, `[`, 1))
+  
+  out = list(
+    # parameters for simulation
+    n_rep=as.integer(params$n_rep),
+    
+    # parameters for data generating process
+    N=as.integer(params$N),
+    T_=as.integer(params$T_),
+    p=as.integer(params$p),
+    r=as.integer(params$r),
+    phi=as.numeric(params$phi),
+    K0=as.integer(params$K0),
+    m0=as.integer(params$m0),
+    pi_=as.numeric(params$pi_),
+    L=as.integer(params$L),
+    kappa=as.integer(params$kappa),
+    
+    # parameters for tuning gamma
+    gamma_max_start_value=as.numeric(params$gamma_max_start_value),
+    gamma_min_ratio=as.numeric(params$gamma_min_ratio),
+    num_gamma=as.integer(params$num_gamma)
+  )
+  
+  return(out)
 }
 
 timer = function(f){

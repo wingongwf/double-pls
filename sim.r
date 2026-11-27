@@ -1,6 +1,6 @@
 # This module consists of all functions for running simulations
 
-run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
+run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_max_start_value, gamma_min_ratio, num_gamma){
   # Step 1: generate observations X and y
   # X: N x T_ x p
   # y: N x T_
@@ -24,11 +24,11 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2])
   
   # Step 5: evaluate the performance
-  metrics = eval_perf(N=N, T_=T_, p=p, B0=B0, fit=fit)
+  metrics = eval_perf(N=N, T_=T_, p=p, B0=B0, K0=K0, m0=m0, fit=fit)
   return(metrics)
 }
 
-run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa){
+run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_max_start_value, gamma_min_ratio, num_gamma){
   make_csv_Btilde(N=N, T_=T_, p=p, filename=CSV_BETA)
   metrics = list(
     correct_num_groups=rep(NA, n_rep),
@@ -43,7 +43,9 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   
   # run n_rep times
   for (rep in 1:n_rep){
-    metrics_rep = run_replication(N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0, pi_=pi_, L=L, kappa=kappa)
+    metrics_rep = run_replication(
+      N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0,pi_=pi_, L=L, kappa=kappa,
+      gamma_max_start_value=gamma_max_start_value, gamma_min_ratio=gamma_min_ratio, num_gamma=num_gamma)
     
     metrics$correct_num_groups[rep] = metrics_rep$correct_num_groups
     metrics$correct_membership[rep] = metrics_rep$correct_membership
