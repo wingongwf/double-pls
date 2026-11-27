@@ -122,8 +122,8 @@ compute_omega_period = function(N, T_, p, X, y, kappa){
   return(omega)
 }
 
-compute_information_criterion = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
+compute_information_criterion = function(N, T_, p, X, y, opt, gamma_1, gamma_2, verbose=FALSE){
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2, verbose=verbose)
   A_hat = fit$A_hat
   M_F_hat = fit$M_F_hat
   group_hat = fit$group_hat
@@ -131,7 +131,7 @@ compute_information_criterion = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
   K_hat = fit$K_hat
   m_hat = fit$m_hat
   
-  clog(paste0("gamma_1=", round(gamma_1,2), ", gamma_2=", round(gamma_2,2), ", K_hat=", K_hat, ", m_hat=", m_hat))
+  if (verbose) clog(paste0("gamma_1=", round(gamma_1,2), ", gamma_2=", round(gamma_2,2), ", K_hat=", K_hat, ", m_hat=", m_hat))
   
   residual_sum_squares = 0
   for (l in 1:K_hat){
@@ -172,7 +172,7 @@ compute_information_criterion = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
   return(ic)
 }
 
-tune_gamma = function(N, T_, p, X, y, opt, gamma_grid, verbose=FALSE){
+tune_gamma = function(N, T_, p, X, y, opt, gamma_grid){
   num_gamma_1 = length(gamma_grid$gamma_1)
   num_gamma_2 = length(gamma_grid$gamma_2)
   ic_values = matrix(NA, nrow=num_gamma_1, ncol=num_gamma_2)
@@ -181,53 +181,55 @@ tune_gamma = function(N, T_, p, X, y, opt, gamma_grid, verbose=FALSE){
     for (j in 1:num_gamma_2){
       gamma_1 = gamma_grid$gamma_1[i]
       gamma_2 = gamma_grid$gamma_2[j]
-      ic_ij = compute_information_criterion(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
+      ic_ij = compute_information_criterion(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2, verbose=FALSE)
       ic_values[i,j] = ic_ij
-      if (verbose) clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", ic=", round(ic_ij,2)))
+      # clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", ic=", round(ic_ij,2)))
     }
   }
   
   stopifnot(sum(is.na(ic_values)) == 0)
   pos_min_ic = which(ic_values == min(ic_values), arr.ind=TRUE)
-  clog(paste0("pos_min_ic=", vec2str(apply(pos_min_ic, 1, paste, collapse=","))))
   
   # Select the first row (even when there are multiple gamma pairs that give same IC)
   gamma_1_hat = gamma_grid$gamma_1[pos_min_ic[1,"row"]]
   gamma_2_hat = gamma_grid$gamma_2[pos_min_ic[1,"col"]]
   gamma_hat = c(gamma_1_hat, gamma_2_hat)
-  clog(paste0("gamma_hat=", vec2str(round(gamma_hat,4))))
+  clog(paste0("pos_min_ic=", vec2str(apply(pos_min_ic, 1, paste, collapse=",")),
+              ", gamma_hat=", vec2str(round(gamma_hat,4)),
+              ", gamma_hat_ratio=", round(gamma_1_hat/gamma_2_hat, 4)))
   
   return(gamma_hat)
 }
 
 tune_gamma_max = function(N, T_, p, X, y, opt, start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
   gamma = start_value
-  clog(paste0("try gamma=", gamma))
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma, verbose=FALSE)
   
   if (fit$K_hat!=1 || fit$m_hat!=0){
     # if gamma too small
     while (fit$K_hat!=1 || fit$m_hat!=0){
+      prev_gamma = gamma
       gamma = gamma * multiplier
       if (gamma > upper_bound){
         stop("upper_bound=", upper_bound, " reached, gamma_max not found")
       }
       
-      clog(paste0("previous gamma too small, try gamma=", gamma))
-      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
+      clog(paste0("prev_gamma=", prev_gamma," too small, try gamma=", gamma))
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma, verbose=FALSE)
     }
     
     return(c(gamma, gamma))
   } else{
     # if gamma too large
     while (fit$K_hat==1 && fit$m_hat==0){
+      prev_gamma = gamma
       gamma = gamma / multiplier
       if (gamma < lower_bound){
         stop("lower_bound=", lower_bound, " reached, gamma_max not found")
       }
       
-      clog(paste0("previous gamma too large, try gamma=", gamma))
-      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
+      clog(paste0("prev_gamma=", prev_gamma," too large, try gamma=", gamma))
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma, verbose=FALSE)
     }
     
     gamma_max = gamma * multiplier
@@ -327,10 +329,10 @@ estimate_regimes = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
   return(regime)
 }
 
-estimate_slopes = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
+estimate_slopes = function(N, T_, p, X, y, opt, gamma_1, gamma_2, verbose=FALSE){
   # Step 1: estimate the slopes B with given gamma_1 and gamma_2
   M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
-  B_hat = estimate_slopes_pre_selection(opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
+  B_hat = estimate_slopes_pre_selection(opt=opt, gamma_1=gamma_1, gamma_2=gamma_2, verbose=verbose)
   assert_dimensions(B_hat, dim_=c(p, N*T_))
   
   # Step 2: estimate groups and regimes in slopes
@@ -338,18 +340,18 @@ estimate_slopes = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
   regime_hat = estimate_regimes(N=N, T_=T_, p=p, B=B_hat)
   K_hat = max(group_hat)
   m_hat = max(regime_hat) - 1
-  clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
+  if (verbose) clog(paste0("group=", vec2str(group_hat), ", regime=", vec2str(regime_hat), ", K_hat=", K_hat, ", m_hat=", m_hat))
   
   # Step 3: post-selection estimation of slopes
   # A_hat: K_hat x (m_hat+1) x p
   A_hat = estimate_slopes_post_selection(
-    N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat)
+    N=N, p=p, X=X, y=y, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat, verbose=verbose)
   assert_dimensions(A_hat, dim_=c(K_hat, m_hat+1, p))
   
   return(list(A_hat=A_hat, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
 }
 
-estimate_slopes_pre_selection = function(opt, gamma_1, gamma_2){
+estimate_slopes_pre_selection = function(opt, gamma_1, gamma_2, verbose=TRUE){
   # Update parameters
   CVXR::value(opt$gamma_1) = gamma_1
   CVXR::value(opt$gamma_2) = gamma_2
@@ -360,7 +362,7 @@ estimate_slopes_pre_selection = function(opt, gamma_1, gamma_2){
   # Log the optimization stats
   stats = CVXR::solver_stats(opt$prob)
   status = CVXR::status(opt$prob)
-  clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", status=", status,
+  if (verbose) clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", status=", status,
               ", solve_time=", round(stats@solve_time,2), ", ", "num_iters=", stats@num_iters))
   stopifnot(status == "optimal")  # assert convergence
 
@@ -518,4 +520,5 @@ estimate_slopes_post_selection = function(N, p, X, y, M_F_hat, group_hat, regime
 
 # Time the functions
 tune_gamma = timer(tune_gamma)
+tune_gamma_max = timer(tune_gamma_max)
 estimate_slopes = timer(estimate_slopes)

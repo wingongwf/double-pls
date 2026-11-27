@@ -114,7 +114,12 @@ vec2str = function(vec){
 list2str = function(x, digits=NULL){
   out = ""
   for (item in names(x)){
-    val = ifelse(is.null(digits), x[[item]], round(x[[item]], digits))
+    if (is.array(x[[item]])){
+      val = "<array>"  # ignore arrays
+    } else{
+      val = ifelse(is.null(digits), x[[item]], round(x[[item]], digits))
+    }
+    
     out = paste0(out, item, "=", val, ", ")
   }
   
@@ -215,11 +220,19 @@ timer = function(f){
   function(...){
     start = Sys.time()
     fn_params = list(...)
-    clog(paste0(fn_name, ": status=start, ", list2str(fn_params)))
+    
+    verbose = TRUE
+    if ("verbose" %in% names(fn_params)) {
+      if (fn_params[["verbose"]] == FALSE) {
+        verbose = FALSE
+      }
+    }
+    
+    if (verbose) clog(paste0(fn_name, ": status=start, ", list2str(fn_params)))
     output = f(...)
     
     elapsed = difftime(Sys.time(), start, units="secs")
-    clog(paste0(fn_name, ": status=end, elapsed=", round(elapsed, 2), ", ", list2str(fn_params)))
+    if (verbose) clog(paste0(fn_name, ": status=end, elapsed=", round(elapsed, 2), ", ", list2str(fn_params)))
     return(output)
   }
 }

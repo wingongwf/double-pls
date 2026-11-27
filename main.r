@@ -8,12 +8,12 @@ source("sim.r")
 set.seed(1233)
 
 # # parameters for simulation
-# n_rep = 10  # TODO: small parameters test case
+# n_rep = 10
 # 
 # # parameters for data generating process
-# N = 10     # TODO: small parameters test case
-# T_ = 20    # TODO: small parameters test case
-# p = 2      # TODO: small parameters test case
+# N = 10
+# T_ = 20
+# p = 2
 # r = 2
 # phi = 0.8
 # K0 = 2
@@ -43,12 +43,12 @@ if (interactive()){
   # when running in RStudio console
   params = list(
     # parameters for simulation
-    n_rep=10,  # TODO: small parameters test case
+    n_rep=10,
     
     # parameters for data generating process
-    N=10,     # TODO: small parameters test case
-    T_=20,    # TODO: small parameters test case
-    p=2,      # TODO: small parameters test case
+    N=10,   
+    T_=20,
+    p=2,
     r=2,
     phi=0.8,
     K0=2,

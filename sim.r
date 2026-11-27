@@ -21,7 +21,7 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_max_st
   
   # Step 4: estimate slopes with given gamma_1 and gamma_2
   # A_hat: K_hat x (m_hat+1) x p
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2])
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2], verbose=TRUE)
   
   # Step 5: evaluate the performance
   metrics = eval_perf(N=N, T_=T_, p=p, B0=B0, K0=K0, m0=m0, fit=fit)
@@ -44,6 +44,7 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_
   
   # run n_rep times
   for (rep in 1:n_rep){
+    clog(paste0("running loop=", rep, "/", n_rep))
     metrics_rep = run_replication(
       N=N, T_=T_, p=p, r=r, phi=phi, K0=K0, m0=m0,pi_=pi_, L=L, kappa=kappa,
       gamma_max_start_value=gamma_max_start_value, gamma_min_ratio=gamma_min_ratio, num_gamma=num_gamma)
@@ -71,7 +72,7 @@ run_simulation = function(n_rep, N, T_, p, r, phi, K0, m0, pi_, L, kappa, gamma_
     avg_num_breaks=mean(metrics$num_breaks),
     avg_root_mean_squared_error=mean(metrics$root_mean_squared_error)
   )
-  clog(paste0("performance: ", list2str(metrics_agg)))
+  clog(paste0("performance: ", list2str(metrics_agg,4)))
   return(metrics_agg)
 }
 
