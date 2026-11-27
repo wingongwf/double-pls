@@ -3,8 +3,10 @@ source("dgp.r")
 source("est.r")
 source("util.r")
 
-# Set up parameters
+# parameters for simulation
 n_rep = 10  # TODO: small parameters test case
+
+# parameters for data generating process
 N = 10     # TODO: small parameters test case
 T_ = 20    # TODO: small parameters test case
 p = 2      # TODO: small parameters test case
@@ -16,6 +18,10 @@ pi_ = 0.2
 L = 5
 kappa = 2
 
+# parameters for tuning gamma
+gamma_max_start_value = 1
+gamma_min_ratio = 1e-4
+num_gamma = 5
 
 # file names
 LOG_DATETIME = format(Sys.time(), "%Y%m%d_%H%M%S")
@@ -40,8 +46,8 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   optimizer = make_optimizer(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa)
   
   # Step 3: tune gamma_1 and gamma_2
-  gamma_max = tune_gamma_max(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, start_value=1)
-  gamma_grid = get_gamma_grid(gamma_max=gamma_max, gamma_min_ratio=1e-4, num_gamma=5)
+  gamma_max = tune_gamma_max(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, start_value=gamma_max_start_value)
+  gamma_grid = get_gamma_grid(gamma_max=gamma_max, gamma_min_ratio=gamma_min_ratio, num_gamma=num_gamma)
   gamma_hat = tune_gamma(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_grid=gamma_grid)
   
   # Step 4: estimate slopes with given gamma_1 and gamma_2
