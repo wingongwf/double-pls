@@ -41,6 +41,7 @@ CSV_BETA = paste0("results/Btilde_", LOG_DATETIME, ".csv")
 
 if (interactive()){
   # when running in RStudio console
+  clog("running in console")
   params = list(
     # parameters for simulation
     n_rep=10,
@@ -65,6 +66,7 @@ if (interactive()){
 } else{
   # when running in terminal
   # Rscript main.r --n_rep=10 --N=10 --T_=20 --p=2 --r=2 --phi=0.8 --K0=2 --m0=1 --pi_=0.2 --L=5 --kappa=2 --gamma_max_start_value=1 --gamma_min_ratio=1e-4 --num_gamma=5
+  clog("running in terminal")
   args = commandArgs(trailingOnly=TRUE)
   params = read_args(args)
 }
