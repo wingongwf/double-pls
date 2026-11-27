@@ -123,8 +123,8 @@ compute_omega_period = function(N, T_, p, X, y, kappa){
   return(omega)
 }
 
-compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+compute_information_criterion = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
   A_hat = fit$A_hat
   M_F_hat = fit$M_F_hat
   group_hat = fit$group_hat
@@ -173,7 +173,7 @@ compute_information_criterion = function(N, T_, p, X, y, kappa, gamma_1, gamma_2
   return(ic)
 }
 
-tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
+tune_gamma = function(N, T_, p, X, y, opt, gamma_grid, verbose=FALSE){
   num_gamma_1 = length(gamma_grid$gamma_1)
   num_gamma_2 = length(gamma_grid$gamma_2)
   ic_values = matrix(NA, nrow=num_gamma_1, ncol=num_gamma_2)
@@ -182,7 +182,7 @@ tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
     for (j in 1:num_gamma_2){
       gamma_1 = gamma_grid$gamma_1[i]
       gamma_2 = gamma_grid$gamma_2[j]
-      ic_ij = compute_information_criterion(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+      ic_ij = compute_information_criterion(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
       ic_values[i,j] = ic_ij
       if (verbose) clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", ic=", round(ic_ij,2)))
     }
@@ -201,10 +201,10 @@ tune_gamma = function(N, T_, p, X, y, kappa, gamma_grid, verbose=FALSE){
   return(gamma_hat)
 }
 
-tune_gamma_max = function(N, T_, p, X, y, kappa, start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
+tune_gamma_max = function(N, T_, p, X, y, opt, start_value, multiplier=10, lower_bound=1e-10, upper_bound=1e10){
   gamma = start_value
   clog(paste0("try gamma=", gamma))
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
   
   if (fit$K_hat!=1 || fit$m_hat!=0){
     # if gamma too small
@@ -215,7 +215,7 @@ tune_gamma_max = function(N, T_, p, X, y, kappa, start_value, multiplier=10, low
       }
       
       clog(paste0("previous gamma too small, try gamma=", gamma))
-      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
     }
     
     return(c(gamma, gamma))
@@ -228,12 +228,36 @@ tune_gamma_max = function(N, T_, p, X, y, kappa, start_value, multiplier=10, low
       }
       
       clog(paste0("previous gamma too large, try gamma=", gamma))
-      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma, gamma_2=gamma)
+      fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=opt, gamma_1=gamma, gamma_2=gamma)
     }
     
     gamma_max = gamma * multiplier
     return(c(gamma_max, gamma_max))
   }
+}
+
+make_optimizer = function(N, T_, p, X, y, M_F_hat, kappa){
+  # Decision variables
+  # B: p x N*T_
+  B = CVXR::Variable(c(p, N*T_))
+  
+  # Parameters: gamma_1, gamma_2
+  gamma_1 = CVXR::Parameter(nonneg=TRUE)
+  gamma_2 = CVXR::Parameter(nonneg=TRUE)
+  
+  # Set up the objective function
+  M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
+  residual_sum_squares = compute_residual_sum_squares(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat)
+  penalty_cross_section = compute_penalty_cross_section(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat, kappa=kappa)
+  penalty_time_dimension = compute_penalty_time_dimension(N=N, T_=T_, p=p, X=X, y=y, B=B, kappa=kappa)
+  
+  objective = CVXR::Minimize(1/(N*T_) * residual_sum_squares +
+                               gamma_1/(N^2) * penalty_cross_section +
+                               gamma_2/T_ * penalty_time_dimension)
+  
+  # Set up the problem
+  prob = CVXR::Problem(objective)
+  return(list(prob=prob, B=B, gamma_1=gamma_1, gamma_2=gamma_2))
 }
 
 estimate_groups = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
@@ -304,11 +328,11 @@ estimate_regimes = function(N, T_, p, B, verbose=FALSE, tol=1e-8){
   return(regime)
 }
 
-estimate_slopes = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
+estimate_slopes = function(N, T_, p, X, y, opt, gamma_1, gamma_2){
   # Step 1: estimate the slopes B with given gamma_1 and gamma_2
   M_F_hat = compute_M_F_hat(N=N, T_=T_, p=p, X=X)
-  B_hat = estimate_slopes_pre_selection(
-    N=N, T_=T_, p=p, X=X, y=y, M_F_hat=M_F_hat, kappa=kappa, gamma_1=gamma_1, gamma_2=gamma_2)
+  B_hat = estimate_slopes_pre_selection(opt=opt, gamma_1=gamma_1, gamma_2=gamma_2)
+  assert_dimensions(B_hat, dim_=c(p, N*T_))
   
   # Step 2: estimate groups and regimes in slopes
   group_hat = estimate_groups(N=N, T_=T_, p=p, B=B_hat)
@@ -326,30 +350,26 @@ estimate_slopes = function(N, T_, p, X, y, kappa, gamma_1, gamma_2){
   return(list(A_hat=A_hat, M_F_hat=M_F_hat, group_hat=group_hat, regime_hat=regime_hat, K_hat=K_hat, m_hat=m_hat))
 }
 
-estimate_slopes_pre_selection = function(N, T_, p, X, y, M_F_hat, kappa, gamma_1, gamma_2){
-  # Decision variables
-  # B: p x N*T_
-  B = CVXR::Variable(c(p, N*T_))
-  
-  # Set up the objective function
-  residual_sum_squares = compute_residual_sum_squares(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat)
-  penalty_cross_section = compute_penalty_cross_section(N=N, T_=T_, p=p, X=X, y=y, B=B, M_F_hat=M_F_hat, kappa=kappa)
-  penalty_time_dimension = compute_penalty_time_dimension(N=N, T_=T_, p=p, X=X, y=y, B=B, kappa=kappa)
-  
-  objective = CVXR::Minimize(1/(N*T_) * residual_sum_squares +
-                               gamma_1/(N^2) * penalty_cross_section +
-                               gamma_2/T_ * penalty_time_dimension)
+estimate_slopes_pre_selection = function(opt, gamma_1, gamma_2){
+  # Update parameters
+  CVXR::value(opt$gamma_1) = gamma_1
+  CVXR::value(opt$gamma_2) = gamma_2
   
   # Run optimization to estimate B: B_hat
-  prob = CVXR::Problem(objective)
-  solution = CVXR::psolve(prob)
-  num_iters = CVXR::solver_stats(prob)@num_iters
-  solve_time = CVXR::solver_stats(prob)@solve_time
-  clog(paste0("solve_time=", round(solve_time,2), ", ", "num_iters=", num_iters))
-  stopifnot(CVXR::status(prob) == "optimal")  # assert convergence
+  solution = CVXR::psolve(opt$prob)
+  
+  # Log the optimization stats
+  stats = CVXR::solver_stats(opt$prob)
+  status = CVXR::status(opt$prob)
+  clog(paste0("gamma_1=", gamma_1, ", gamma_2=", gamma_2, ", status=", status,
+              ", solve_time=", round(stats@solve_time,2), ", ", "num_iters=", stats@num_iters))
+  stopifnot(status == "optimal")  # assert convergence
 
-  B_hat = CVXR::value(B)
-  assert_dimensions(B_hat, dim_=c(p, N*T_))
+  B_hat = CVXR::value(opt$B)
+  
+  # Revert parameters back to NULL for safety
+  CVXR::value(opt$gamma_1) = NULL
+  CVXR::value(opt$gamma_2) = NULL
   
   return(B_hat)
 }

@@ -36,16 +36,19 @@ run_replication = function(N, T_, p, r, phi, K0, m0, pi_, L, kappa){
   assert_dimensions(X, dim_=c(N, T_, p))
   assert_dimensions(y, dim_=c(N, T_))
   
-  # Step 2: tune gamma_1 and gamma_2
-  gamma_max = tune_gamma_max(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, start_value=1)
+  # Step 2: make the optimizer for this data set
+  optimizer = make_optimizer(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa)
+  
+  # Step 3: tune gamma_1 and gamma_2
+  gamma_max = tune_gamma_max(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, start_value=1)
   gamma_grid = get_gamma_grid(gamma_max=gamma_max, gamma_min_ratio=1e-4, num_gamma=5)
-  gamma_hat = tune_gamma(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_grid=gamma_grid)
+  gamma_hat = tune_gamma(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_grid=gamma_grid)
   
-  # Step 3: estimate slopes with given gamma_1 and gamma_2
+  # Step 4: estimate slopes with given gamma_1 and gamma_2
   # A_hat: K_hat x (m_hat+1) x p
-  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, kappa=kappa, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2])
+  fit = estimate_slopes(N=N, T_=T_, p=p, X=X, y=y, opt=optimizer, gamma_1=gamma_hat[1], gamma_2=gamma_hat[2])
   
-  # Step 4: evaluate the performance
+  # Step 5: evaluate the performance
   metrics = eval_perf(N=N, T_=T_, p=p, B0=B0, fit=fit)
   return(metrics)
 }
